@@ -1,0 +1,86 @@
+Question is from Leetcode.
+My accepted solution:
+
+select id, visit_date, people
+from (select id, visit_date, people from Stadium where people >= 100) AS temp
+where (
+    (id-2) in (select id from (select id, visit_date, people from Stadium where people >= 100) AS temp) and (id-1) in (select id from (select id, visit_date, people from Stadium where people >= 100) AS temp)
+) or (
+    (id-1) in (select id from (select id, visit_date, people from Stadium where people >= 100) AS temp) and (id+1) in (select id from (select id, visit_date, people from Stadium where people >= 100) AS temp)
+) or (
+    (id+1) in (select id from (select id, visit_date, people from Stadium where people >= 100) AS temp) and (id+2) in (select id from (select id, visit_date, people from Stadium where people >= 100) AS temp)
+)
+order by visit_date ASC;
+
+Suppose that there are three consecutive ids t1, t2, t3, the query checks three conditions:
+1. Current row is t3, checking whether t1 and t2 are in the table temp.
+2. Current row is t2, checking whether t1 and t3 are in the table temp.
+3. Current row is t1, checking whether t2 and t3 are in the table temp.
+Once one of the above is true, the selected row is in a sequence, so it should be selected.
+
+Here the same query is used multiple times, so I tried to create views and tables to short the query. 
+For example, create table temp select id, visit_date, people from Stadium where people >= 100;
+or, create view ids as select id from (select id, visit_date, people from Stadium where people >= 100) AS temp;
+But they are not acceptable on Leetcode. 
+
+---------------------------------------------------------
+
+There are other solutions from discussions.
+
+(1) @mc2011  from Leetcode
+
+select id, visit_date, people
+from stadium
+where people>=100
+and
+((id+1 in (select id from stadium where people>=100) and id+2 in (select id from stadium where people>=100))
+OR (id+1 in (select id from stadium where people>=100) and id-1 in (select id from stadium where people>=100))
+OR (id-1 in (select id from stadium where people>=100) and id-2 in (select id from stadium where people>=100)))
+;
+
+This solution is similar to mine but it is more concise because I was simply copying the subquery to pass the test without considering that it is redundant.
+
+(2) @wangyihuang24  from Leetcode
+
+SELECT DISTINCT S1.*
+FROM stadium S1
+JOIN stadium S2
+JOIN stadium S3
+ON ((S1.id = S2.id - 1 AND S1.id = S3.id -2)
+OR (S3.id = S1.id - 1 AND S3.id = S2.id -2)
+OR (S3.id = S2.id - 1 AND S3.id = S1.id -2))
+WHERE S1.people >= 100
+AND S2.people >= 100
+AND S3.people >= 100
+ORDER BY S1.id;
+
+(3) official solution from Leetcode
+
+select distinct t1.*
+from stadium t1, stadium t2, stadium t3
+where t1.people >= 100 and t2.people >= 100 and t3.people >= 100
+and
+(
+    (t1.id - t2.id = 1 and t1.id - t3.id = 2 and t2.id - t3.id =1)  -- t1, t2, t3
+    or
+    (t2.id - t1.id = 1 and t2.id - t3.id = 2 and t1.id - t3.id =1) -- t2, t1, t3
+    or
+    (t3.id - t2.id = 1 and t2.id - t1.id =1 and t3.id - t1.id = 2) -- t3, t2, t1
+)
+order by t1.id
+;
+
+(4) @neistadt  from Leetcode
+
+select distinct r.id, r.date, r.people
+from stadium r,
+(select a.id as FROM_ID, a.id+2 as TO_ID
+from stadium a, stadium b, stadium c
+where a.id+1 = b.id
+and b.id+1 = c.id
+and a.people >= 100
+and b.people >= 100
+and c.people >= 100) b
+where r.id between b.FROM_ID and b.TO_ID
+
+Solutions 2&3&4 are similar. It joins three same tables based on those three situations and selects required columns from the first table. This is the common solution of consecutive related questions.
