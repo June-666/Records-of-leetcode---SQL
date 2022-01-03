@@ -1,0 +1,89 @@
+Question is from Leetcode.
+
+My accepted solution:
+
+select D.name as Department, E.name as Employee, E.salary as Salary
+from Employee E, Department D
+where E.departmentId = D.id
+and E.salary in (
+    select E1.salary
+    from Employee E1
+    where E1.departmentId = E.departmentId and 3 >= (
+        select count(*)
+        from (
+            select distinct(E2.salary)
+            from Employee E2
+            where E2.salary >= E1.salary
+            and E2.departmentId = E1.departmentId
+        ) as temp
+    )
+);
+
+line 9-19 is to select top 3 salaries of the current department. Then we select rows whose salary is in the salary set. 
+
+line 9-11 is to make sure that the salary is from the same department.
+
+line 14-17 is to find those salaries which are bigger than or equal to the current one.
+
+line 12 is to count the number of above distinct salaries, and make sure that it is less than or equal to 3, so that current salary is the top 3 biggest salary.
+
+-------------
+
+There are other solutions from discussion.
+
+(1)official solution
+
+SELECT
+    d.Name AS 'Department', e1.Name AS 'Employee', e1.Salary
+FROM
+    Employee e1
+        JOIN
+    Department d ON e1.DepartmentId = d.Id
+WHERE
+    3 > (SELECT
+            COUNT(DISTINCT e2.Salary)
+        FROM
+            Employee e2
+        WHERE
+            e2.Salary > e1.Salary
+                AND e1.DepartmentId = e2.DepartmentId
+        )
+;
+
+(2)@sgv  from Leetcode
+
+SELECT     
+        d.name      as "Department"                     
+        ,e1.Name as "Employee"
+        , e1.Salary as "Salary"
+       
+    FROM 
+        Employee e1 
+        JOIN Employee e2  JOIN Department d
+                      
+    WHERE 
+        e1.DepartmentId = e2.DepartmentId 
+        AND e1.Salary <= e2.Salary  AND d.id = e2.DepartmentId
+                            
+                       
+    GROUP BY d.name,e1.id
+    HAVING COUNT(DISTINCT(e2.Salary)) <= 3
+     order by d.name , salary desc
+     
+The idea of solution 1&2 is similar to mine, but their solutions are more concise. 
+For example, it is not neccesary to aggregate those top 3 salaries (line8-11) because once the count condition is satisfied, the selected salary is difinitely top 3. So the nested query is redundant.
+Also, count and distinct can be combined instead of being nested.
+Solution 2 is easier to understand because the condition is clearly stated in HAVING, compared with the hidden nested query.
+     
+(3)@rongy2018  from Leetcode
+
+select d.Name as Department, a. Name as Employee, a. Salary 
+from (
+select e.*, dense_rank() over (partition by DepartmentId order by Salary desc) as DeptPayRank 
+from Employee e 
+) a 
+join Department d
+on a. DepartmentId = d. Id 
+where DeptPayRank <=3;
+
+Window function DENSE_RANK() is quite useful when it comes to ranking questions, so I plan to write a file to list all window functions and their applications.
