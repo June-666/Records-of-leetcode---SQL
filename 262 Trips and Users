@@ -1,0 +1,77 @@
+Question is from Leetcode
+
+My accepted solution:
+
+select DISTINCT Day2 as Day, ROUND(1 - cancel / s, 2) as 'Cancellation Rate'
+from (
+    select DISTINCT T1.request_at as Day1, count(T3.status) as cancel
+    from Trips T1
+    left join Trips T3 ON T1.id=T3.id and T3.status = "completed"
+    where T1.client_id not in (
+    select users_id 
+    from Users 
+    where banned="Yes"
+) and T1.driver_id not in (
+    select users_id 
+    from Users 
+    where banned="Yes"
+) and (T1.request_at between "2013-10-01" and "2013-10-03") 
+    group by T1.request_at
+    order by T1.request_at ASC
+) as temp, (
+    select DISTINCT T2.request_at as Day2, count(*) as s
+    from Trips T2
+    where T2.client_id not in (
+    select users_id 
+    from Users 
+    where banned="Yes"
+) and T2.driver_id not in (
+    select users_id 
+    from Users 
+    where banned="Yes"
+) and (T2.request_at between "2013-10-01" and "2013-10-03")
+    group by T2.request_at
+    order by T2.request_at ASC
+) as tempe
+where Day1 = Day2
+
+This solution is quite complicated because I didn't think of including if else statement in count then.
+The rough idea is to select completed rows first, then select all rows. Next, divide the number of completed rows by the number of all rows, and use 1 to minus the previous percent to get the cacellation rate. 
+
+There is another Trips table used because left join can preserve all dates.
+"Day1=Day2" is used to join those two temporary tables based on the same date.
+We can create temporary tables in the from clause and use those new names, this is useful on Leetcode.
+
+----------------------
+
+There are other better and shorter solutions from Discussion.
+
+(1) @sachinjha  from Leetcode
+
+select t.Request_at Day,
+       ROUND((count(IF(t.status!='completed',TRUE,null))/count(*)),2) as 'Cancellation Rate'
+from Trips t where 
+t.Client_Id in (Select Users_Id from Users where Banned='No') 
+and t.Driver_Id in (Select Users_Id from Users where Banned='No')
+and t.Request_at between '2013-10-01' and '2013-10-03'
+group by t.Request_at;
+
+(2) @osho79  from Leetcode
+
+SELECT Request_at Day, ROUND(SUM(Status <> 'completed')/COUNT(*), 2) 'Cancellation Rate'
+FROM Trips
+WHERE Client_Id IN (SELECT Users_Id FROM Users WHERE Banned='No')
+    AND Driver_Id IN (SELECT Users_Id FROM Users WHERE Banned='No')
+    AND Request_at BETWEEN '2013-10-01' AND '2013-10-03'
+GROUP BY Request_at;
+
+(3) @yeju12331  from Leetcode
+
+SELECT Request_at AS Day, ROUND(SUM(IF(Status = 'completed', 0, 1))/COUNT(Status),2) as 'Cancellation Rate' 
+FROM Trips 
+WHERE Client_Id NOT IN (SELECT Users_Id FROM Users WHERE Banned = 'Yes') 
+    AND Driver_Id NOT IN (SELECT Users_Id FROM Users WHERE Banned = 'Yes')
+    AND Request_at BETWEEN '2013-10-01' AND '2013-10-03'
+GROUP BY Trips.Request_at;
+
+They are quite similar and efficient, and I learned much from them.
